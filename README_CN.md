@@ -1,14 +1,27 @@
 [English Version](README.md)
 
-# MNNConvert
+# MNNConvert (ONNX 版本)
 
-## 编译模型转换工具(gcc>=4.9)
-首先需要安装protobuf(3.0以上)
+将 ONNX 模型转换为 MNN 格式。这是 MNN 转换器的精简版本，专注于 ONNX 模型转换。
+
+## 依赖
+
+- gcc >= 4.9（或 Clang）
+- protobuf >= 3.0
+- MNN 框架（此转换器作为 MNN 项目的子组件构建）
+
 ```bash
 # macOS
 brew install protobuf
+# Ubuntu/Debian
+sudo apt-get install libprotobuf-dev protobuf-compiler
 ```
-其它平台请参考[官方安装步骤](https://github.com/protocolbuffers/protobuf/tree/master/src)
+
+其他平台请参考 [protobuf 官方安装指南](https://github.com/protocolbuffers/protobuf/tree/master/src)。
+
+## 编译
+
+此转换器是 MNN 项目的子组件，需要从 MNN 根目录编译：
 
 ```bash
 cd MNN
@@ -18,58 +31,83 @@ cmake .. -DMNN_BUILD_CONVERTER=true
 make
 ```
 
-## 模型转换的使用
+## 使用方法
 
 ```bash
 Usage:
   MNNConvert [OPTION...]
 
-  -h, --help            Convert Other Model Format To MNN Model
+  -h, --help                 模型转换工具
 
-  -v, --version         show current version
-  -f, --framework arg   model type, ex: [TF,CAFFE,ONNX,TFLITE,MNN]
-      --modelFile arg   tensorflow Pb or caffeModel, ex: *.pb,*caffemodel
-      --prototxt arg    only used for caffe, ex: *.prototxt
-      --MNNModel arg    MNN model, ex: *.mnn
-      --benchmarkModel  Do NOT save big size data, such as Conv's weight,BN's
-                        gamma,beta,mean and variance etc. Only used to test
-                        the cost of the model
-      --bizCode arg     MNN Model Flag, ex: MNN
-      --debug           Enable debugging mode.
+  -v, --version              显示当前版本
+  -f, --framework arg        模型类型，可选: [ONNX, MNN, JSON]
+      --modelFile arg        ONNX 模型文件，例如: *.onnx
+      --MNNModel arg         MNN 模型，例如: *.mnn
+      --benchmarkModel       不保存大规模数据，如 Conv 的 weight、BN 的
+                             gamma, beta, mean, variance 等。仅用于测试
+                             模型的性能
+      --bizCode arg          MNN 模型标识，例如: MNN
+      --debug                启用调试模式
+      --forTraining          是否保留训练用算子 BN 和 Dropout，默认: false
+      --fp16                 以半精度浮点数保存 Conv 的 weight/bias
+      --weightQuantBits arg  将 conv/matmul/LSTM 的 float 权重量化为
+                             int8，2-8 位，默认: 0（不量化）
+      --optimizeLevel arg    图优化等级:
+                               0 - 不优化 (仅 MNN 源)
+                               1 - 安全优化 (默认)
+                               2 - 激进优化 (某些情况可能出错)
+      --keepInputFormat      是否保持输入维度格式，默认: true
+      --saveStaticModel      保存固定 shape 的静态模型，默认: false
+      --inputConfigFile arg  静态模型输入配置文件，例如: ~/config.txt
+      --compressionParamsFile arg
+                             压缩参数文件路径（int8 校准表或稀疏参数）
+      --info                 导出 MNN 模型信息
+      --OP                   打印框架支持的操作列表
+      --dumpPass             输出每个优化 Pass 的详细信息
 ```
 
-> 说明: 选项benchmarkModel将模型中例如卷积的weight，BN的mean，var等参数移除，减小转换后模型文件大小，在运行时随机初始化参数，以方便测试模型的性能。
+> 说明: `--benchmarkModel` 选项会将模型中 Conv 的 weight、BN 的 mean/var 等参数移除，减小转换后的模型文件大小，在运行时随机初始化参数，以方便测试模型性能。
 
-### tensorflow/ONNX/tflite
+### ONNX 转 MNN
 
 ```bash
-./MNNConvert -f TF/ONNX/TFLITE --modelFile XXX.pb/XXX.onnx/XXX.tflite --MNNModel XXX.XX --bizCode XXX
+./MNNConvert -f ONNX --modelFile model.onnx --MNNModel model.mnn --bizCode MNN
 ```
 
-三个选项是必须的！
-例如:
+三个选项（`-f`、`--modelFile`、`--MNNModel`）是必须的。
+
+示例:
 
 ```bash
-./MNNConvert -f TF --modelFile path/to/mobilenetv1.pb --MNNModel model.mnn --bizCode MNN
+# 基本转换
+./MNNConvert -f ONNX --modelFile path/to/model.onnx --MNNModel model.mnn --bizCode MNN
+
+# 使用半精度浮点存储权重（减小模型体积）
+./MNNConvert -f ONNX --modelFile model.onnx --MNNModel model.mnn --bizCode MNN --fp16
+
+# 使用 int8 权重量化（进一步减小模型体积）
+./MNNConvert -f ONNX --modelFile model.onnx --MNNModel model.mnn --bizCode MNN --weightQuantBits 8
+
+# 保留训练算子（BatchNorm, Dropout）
+./MNNConvert -f ONNX --modelFile model.onnx --MNNModel model.mnn --bizCode MNN --forTraining
 ```
 
-### caffe
+### MNN 转 MNN（重新编码/修改 bizCode）
 
 ```bash
-./MNNConvert -f CAFFE --modelFile XXX.caffemodel --prototxt XXX.prototxt --MNNModel XXX.XX --bizCode XXX
+./MNNConvert -f MNN --modelFile source.mnn --MNNModel output.mnn --bizCode NEWCODE
 ```
 
-四个选项是必须的！
-例如:
+### MNN 转 JSON（导出模型结构供检查）
 
 ```bash
-./MNNConvert -f CAFFE --modelFile path/to/mobilenetv1.caffemodel --prototxt path/to/mobilenetv1.prototxt --MNNModel model.mnn --bizCode MNN
+./MNNConvert -f MNN --modelFile model.mnn --JsonFile model.json
 ```
 
-### MNN
+### JSON 转 MNN
 
 ```bash
-./MNNConvert -f MNN --modelFile XXX.mnn --MNNModel XXX.XX --bizCode XXX
+./MNNConvert -f JSON --modelFile model.json --MNNModel model.mnn
 ```
 
 ### 查看版本号
@@ -78,37 +116,66 @@ Usage:
 ./MNNConvert --version
 ```
 
-## MNNDump2Json
-将MNN模型bin文件 dump 成可读的类json格式文件，以方便对比原始模型参数
+### 查看模型信息
 
-## Pytorch 模型转换
-- 用Pytorch的 onnx.export 接口转换 Onnx 模型文件（参考：https://pytorch.org/docs/stable/onnx.html）
-
+```bash
+./MNNConvert -f MNN --modelFile model.mnn --info
 ```
+
+### 列出支持的 ONNX 算子
+
+```bash
+./MNNConvert -f ONNX --OP
+```
+
+## PyTorch 模型转换
+
+1. 用 PyTorch 的 onnx.export 导出 ONNX 模型（参考: https://pytorch.org/docs/stable/onnx.html）:
+
+```python
 import torch
 import torchvision
 
 dummy_input = torch.randn(10, 3, 224, 224, device='cuda')
 model = torchvision.models.alexnet(pretrained=True).cuda()
 
-# Providing input and output names sets the display names for values
-# within the model's graph. Setting these does not change the semantics
-# of the graph; it is only for readability.
-#
-# The inputs to the network consist of the flat list of inputs (i.e.
-# the values you would pass to the forward() method) followed by the
-# flat list of parameters. You can partially specify names, i.e. provide
-# a list here shorter than the number of inputs to the model, and we will
-# only set that subset of names, starting from the beginning.
-input_names = [ "actual_input_1" ] + [ "learned_%d" % i for i in range(16) ]
-output_names = [ "output1" ]
+input_names = ["actual_input_1"] + ["learned_%d" % i for i in range(16)]
+output_names = ["output1"]
 
-torch.onnx.export(model, dummy_input, "alexnet.onnx", verbose=True, input_names=input_names, output_names=output_names, do_constant_folding=True)
+torch.onnx.export(model, dummy_input, "alexnet.onnx",
+                  verbose=True, input_names=input_names,
+                  output_names=output_names, do_constant_folding=True)
 ```
 
-- 将 Onnx 模型文件转成 MNN 模型
+2. 将 ONNX 模型转换为 MNN:
 
-```
+```bash
 ./MNNConvert -f ONNX --modelFile alexnet.onnx --MNNModel alexnet.mnn --bizCode MNN
 ```
 
+## TensorFlow / Keras 模型转换
+
+1. 使用 [tf2onnx](https://github.com/onnx/tensorflow-onnx) 将 TF/Keras 模型转换为 ONNX 格式
+2. 然后按照上述方法将 ONNX 模型转换为 MNN
+
+## 权重量化
+
+启用仅权重量化以减小模型体积:
+
+```bash
+# 对称量化（兼容旧版 MNN）
+./MNNConvert -f ONNX --modelFile model.onnx --MNNModel model.mnn --bizCode MNN --weightQuantBits 8
+
+# 非对称量化（精度更好，需要新版 MNN）
+./MNNConvert -f ONNX --modelFile model.onnx --MNNModel model.mnn --bizCode MNN \
+    --weightQuantBits 8 --weightQuantAsymmetric
+```
+
+## MNNDump2Json
+
+将 MNN 二进制模型文件导出为可读的 JSON 格式，方便与原始模型参数进行对比。
+
+## 外部数据模型
+
+对于大型模型（>2GB），权重会自动存储在外部 `.weight` 文件中。
+你也可以使用 `--saveExternalData` 强制启用外部存储。

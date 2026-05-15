@@ -1,14 +1,27 @@
 [中文版本](README_CN.md)
 
-# MNNConvert
+# MNNConvert (ONNX Edition)
 
-## Compile Model Convert Tools(gcc>=4.9)
-Firstly you need to install protobuf (version>3.0)
+Convert ONNX models to MNN format. This is a streamlined version of the MNN converter that focuses exclusively on ONNX model conversion.
+
+## Dependencies
+
+- gcc >= 4.9 (or Clang)
+- protobuf >= 3.0
+- MNN framework (this converter is built as part of the MNN project)
+
 ```bash
 # macOS
 brew install protobuf
+# Ubuntu/Debian
+sudo apt-get install libprotobuf-dev protobuf-compiler
 ```
-Look up the [official document of installation](https://github.com/protocolbuffers/protobuf/tree/master/src) for other platforms.
+
+For other platforms, refer to the [official protobuf installation guide](https://github.com/protocolbuffers/protobuf/tree/master/src).
+
+## Build
+
+This converter is a sub-component of the MNN project. Build it from the MNN root directory:
 
 ```bash
 cd MNN
@@ -16,63 +29,87 @@ mkdir build
 cd build
 cmake .. -DMNN_BUILD_CONVERTER=true
 make
-
-# or execute the shell script directly
-./build_tool.sh
 ```
 
-## Usage Of Model Converter Command
+## Usage
 
 ```bash
 Usage:
   MNNConvert [OPTION...]
 
-  -h, --help            Convert Other Model Format To MNN Model
+  -h, --help                 Convert Other Model Format To MNN Model
 
-  -v, --version         show current version
-  -f, --framework arg   model type, ex: [TF,CAFFE,ONNX,TFLITE,MNN]
-      --modelFile arg   tensorflow Pb or caffeModel, ex: *.pb,*caffemodel
-      --prototxt arg    only used for caffe, ex: *.prototxt
-      --MNNModel arg    MNN model, ex: *.mnn
-      --benchmarkModel  Do NOT save big size data, such as Conv's weight,BN's
-                        gamma,beta,mean and variance etc. Only used to test
-                        the cost of the model
-      --bizCode arg     MNN Model Flag, ex: MNN
-      --debug           Enable debugging mode.
+  -v, --version              show current version
+  -f, --framework arg        model type, ex: [ONNX, MNN, JSON]
+      --modelFile arg        ONNX model file, ex: *.onnx
+      --MNNModel arg         MNN model, ex: *.mnn
+      --benchmarkModel       Do NOT save big size data, such as Conv's weight, BN's
+                             gamma, beta, mean and variance etc. Only used to test
+                             the cost of the model
+      --bizCode arg          MNN Model Flag, ex: MNN
+      --debug                Enable debugging mode.
+      --forTraining          whether or not to save training ops BN and Dropout,
+                             default: false
+      --fp16                 save Conv's weight/bias in half_float data type
+      --weightQuantBits arg  save conv/matmul/LSTM float weights to int8 type,
+                             2-8 bits, default: 0 (no weight quant)
+      --optimizeLevel arg    graph optimize level:
+                               0 - no optimize (MNN source only)
+                               1 - safe optimize (default)
+                               2 - aggressive optimize (may be wrong in some cases)
+      --keepInputFormat      keep input dimension format or not, default: true
+      --saveStaticModel      save static model with fixed shape, default: false
+      --inputConfigFile arg  input config file for static model, ex: ~/config.txt
+      --compressionParamsFile arg
+                             path to compression parameters file (int8 calibration
+                             table or sparsity params)
+      --info                 dump MNN model info
+      --OP                   print framework supported ops
+      --dumpPass             verbose output for each optimization pass
 ```
 
-> Note: Option benchmarkModel has removed some parameters from the model, such as weight of convolution、mean、var of BN，to reduce the size of converted model，and initialize params randomly in runtime，it will be helpful in performance testing.
+> Note: The `--benchmarkModel` option removes parameters (Conv weights, BN mean/var) to reduce model size. Parameters are initialized randomly at runtime. Useful for performance testing.
 
-### tensorflow/ONNX/tflite
+### ONNX to MNN Conversion
 
 ```bash
-./MNNConvert -f TF/ONNX/TFLITE --modelFile XXX.pb/XXX.onnx/XXX.tflite --MNNModel XXX.XX --bizCode XXX
+./MNNConvert -f ONNX --modelFile model.onnx --MNNModel model.mnn --bizCode MNN
 ```
 
-These three options are necessary!
-For example:
+These three options (`-f`, `--modelFile`, `--MNNModel`) are required.
+
+Examples:
 
 ```bash
-./MNNConvert -f TF --modelFile path/to/mobilenetv1.pb --MNNModel model.mnn --bizCode MNN
+# Basic conversion
+./MNNConvert -f ONNX --modelFile path/to/model.onnx --MNNModel model.mnn --bizCode MNN
+
+# With half-float weight storage (reduces model size)
+./MNNConvert -f ONNX --modelFile model.onnx --MNNModel model.mnn --bizCode MNN --fp16
+
+# With int8 weight quantization (for smaller model size)
+./MNNConvert -f ONNX --modelFile model.onnx --MNNModel model.mnn --bizCode MNN --weightQuantBits 8
+
+# Preserve training ops (BatchNorm, Dropout)
+./MNNConvert -f ONNX --modelFile model.onnx --MNNModel model.mnn --bizCode MNN --forTraining
 ```
 
-### caffe
+### MNN to MNN (re-encode with new bizCode)
 
 ```bash
-./MNNConvert -f CAFFE --modelFile XXX.caffemodel --prototxt XXX.prototxt --MNNModel XXX.XX --bizCode XXX
+./MNNConvert -f MNN --modelFile source.mnn --MNNModel output.mnn --bizCode NEWCODE
 ```
 
-These four options are necessary!
-For example:
+### MNN to JSON (dump model structure for inspection)
 
 ```bash
-./MNNConvert -f CAFFE --modelFile path/to/mobilenetv1.caffemodel --prototxt path/to/mobilenetv1.prototxt --MNNModel model.mnn --bizCode MNN
+./MNNConvert -f MNN --modelFile model.mnn --JsonFile model.json
 ```
 
-### MNN
+### JSON to MNN
 
 ```bash
-./MNNConvert -f MNN --modelFile XXX.mnn --MNNModel XXX.XX --bizCode XXX
+./MNNConvert -f JSON --modelFile model.json --MNNModel model.mnn
 ```
 
 ### Show Version
@@ -81,37 +118,66 @@ For example:
 ./MNNConvert --version
 ```
 
-## MNNDump2Json
-Dump MNN binary model file to readable format like json, it will be helpful when compared to original model parameters.
+### Dump Model Info
 
-## How to Convert Pytorch Model
-- Turn pytorch model to Onnx (https://pytorch.org/docs/stable/onnx.html)
-
+```bash
+./MNNConvert -f MNN --modelFile model.mnn --info
 ```
+
+### List Supported ONNX Ops
+
+```bash
+./MNNConvert -f ONNX --OP
+```
+
+## How to Convert PyTorch Model
+
+1. Export PyTorch model to ONNX (https://pytorch.org/docs/stable/onnx.html):
+
+```python
 import torch
 import torchvision
 
 dummy_input = torch.randn(10, 3, 224, 224, device='cuda')
 model = torchvision.models.alexnet(pretrained=True).cuda()
 
-# Providing input and output names sets the display names for values
-# within the model's graph. Setting these does not change the semantics
-# of the graph; it is only for readability.
-#
-# The inputs to the network consist of the flat list of inputs (i.e.
-# the values you would pass to the forward() method) followed by the
-# flat list of parameters. You can partially specify names, i.e. provide
-# a list here shorter than the number of inputs to the model, and we will
-# only set that subset of names, starting from the beginning.
-input_names = [ "actual_input_1" ] + [ "learned_%d" % i for i in range(16) ]
-output_names = [ "output1" ]
+input_names = ["actual_input_1"] + ["learned_%d" % i for i in range(16)]
+output_names = ["output1"]
 
-torch.onnx.export(model, dummy_input, "alexnet.onnx", verbose=True, input_names=input_names, output_names=output_names, do_constant_folding=True)
+torch.onnx.export(model, dummy_input, "alexnet.onnx",
+                  verbose=True, input_names=input_names,
+                  output_names=output_names, do_constant_folding=True)
 ```
 
-- Turn Onnx to MNN
+2. Convert ONNX to MNN:
 
-```
+```bash
 ./MNNConvert -f ONNX --modelFile alexnet.onnx --MNNModel alexnet.mnn --bizCode MNN
 ```
 
+## How to Convert TensorFlow / Keras Model
+
+1. Convert TF/Keras model to ONNX using [tf2onnx](https://github.com/onnx/tensorflow-onnx)
+2. Then convert the ONNX model to MNN as described above
+
+## Weight Quantization
+
+Enable weight-only quantization to reduce model size:
+
+```bash
+# Symmetric weight quantization (compatible with older MNN versions)
+./MNNConvert -f ONNX --modelFile model.onnx --MNNModel model.mnn --bizCode MNN --weightQuantBits 8
+
+# Asymmetric weight quantization (better accuracy, requires newer MNN)
+./MNNConvert -f ONNX --modelFile model.onnx --MNNModel model.mnn --bizCode MNN \
+    --weightQuantBits 8 --weightQuantAsymmetric
+```
+
+## MNNDump2Json
+
+Dump MNN binary model file to readable JSON format for inspection and comparison with the original model parameters.
+
+## External Data Models
+
+For large models (>2GB), weights are automatically stored in an external `.weight` file.
+You can also force external storage with `--saveExternalData`.
