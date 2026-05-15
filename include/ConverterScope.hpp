@@ -6,6 +6,7 @@
 //  Copyright © 2018, Alibaba Group Holding Limited
 //
 
+// 转换过程中的 tensor 符号表 / 作用域管理
 #ifndef CONVERTERSCOPE_HPP
 #define CONVERTERSCOPE_HPP
 

@@ -6,6 +6,7 @@
 //  Copyright © 2018, Alibaba Group Holding Limited
 //
 
+// 声明 CLI 参数解析和 convertModel 入口
 #ifndef CLI_HPP
 #define CLI_HPP
 

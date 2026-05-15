@@ -6,6 +6,8 @@
 //  Copyright © 2018, Alibaba Group Holding Limited
 //
 
+// 定义 modelConfig，保存命令行参数和转换配置
+// modelConfig 是整个转换流程的配置结构体，保存输入模型路径、输出模型路径、模型来源类型、bizCode、量化/优化等参数。
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 #include <string>

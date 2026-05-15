@@ -6,6 +6,7 @@
 //  Copyright © 2018, Alibaba Group Holding Limited
 //
 
+// 声明图优化入口
 #ifndef OPTIMIZER_HPP
 #define OPTIMIZER_HPP
 

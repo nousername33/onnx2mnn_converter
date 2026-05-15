@@ -6,6 +6,7 @@
 //  Copyright © 2018, Alibaba Group Holding Limited
 //
 
+// 把 MNN 内部结构写成 FlatBuffer .mnn 文件
 #include <fstream>
 #include <iostream>
 #include <algorithm>

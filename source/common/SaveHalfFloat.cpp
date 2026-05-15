@@ -6,6 +6,7 @@
 //  Copyright © 2018, Alibaba Group Holding Limited
 //
 
+// fp32 权重转 fp16 保存
 #include "CommonUtils.hpp"
 #include "half.hpp"
 #include <math.h>

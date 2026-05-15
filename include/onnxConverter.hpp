@@ -6,6 +6,7 @@
 //  Copyright © 2018, Alibaba Group Holding Limited
 //
 
+// 声明 ONNX → MNN 的转换入口
 #ifndef ONNXCONVERTER_HPP
 #define ONNXCONVERTER_HPP
 #include <MNN/MNNDefine.h>

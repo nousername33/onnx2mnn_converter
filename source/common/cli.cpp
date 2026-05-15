@@ -6,6 +6,7 @@
 //  Copyright © 2018, Alibaba Group Holding Limited
 //
 
+// 命令行参数解析 + 转换主流程调度
 #include "cli.hpp"
 #if defined(_MSC_VER)
 #include <Windows.h>
@@ -140,8 +141,11 @@ bool Cli::initializeMNNConvertArgs(modelConfig &modelPath, int argc, char **argv
 
     options.positional_help("[optional args]").show_positional_help();
 
-    options.allow_unrecognised_options().add_options()(std::make_pair("h", "help"), "Convert Other Model Format To MNN Model\n")(
-                                                                                                                                 std::make_pair("v", "version"), "show current version")
+    options.allow_unrecognised_options().add_options()
+    (std::make_pair("h", "help"), 
+             "Convert Other Model Format To MNN Model\n")
+    (std::make_pair("v", "version"), 
+             "show current version")
     (std::make_pair("f", "framework"),
              "model type, ex: [ONNX, MNN, JSON]",
      cxxopts::value<std::string>())
@@ -352,6 +356,7 @@ bool Cli::initializeMNNConvertArgs(modelConfig &modelPath, int argc, char **argv
     if (result.count("framework")) {
         frameWork = result["framework"].as<std::string>();
         if ("ONNX" == frameWork) {
+            // -f ONNX 最后变成了什么？
             modelPath.model = modelConfig::ONNX;
         } else if ("MNN" == frameWork) {
             modelPath.model = modelConfig::MNN;
@@ -431,7 +436,8 @@ bool Cli::initializeMNNConvertArgs(modelConfig &modelPath, int argc, char **argv
         std::cout << "TargetVersion is " << version << std::endl;
         modelPath.targetVersion = version;
     }
-    // add MNN bizCode
+
+    // add MNN bizCode, bizCode = 这个 MNN 模型的业务标记
     if (result.count("bizCode")) {
         const std::string bizCode = result["bizCode"].as<std::string>();
         modelPath.bizCode         = bizCode;
@@ -646,6 +652,7 @@ static void _reorderInputs(const std::vector<std::string>& inputNames, MNN::NetT
     }
 }
 
+// 根据 modelPath.model 的类型，选择不同转换流程
 bool Cli::convertModel(modelConfig& modelPath) {
     if (modelPath.dumpInfo) {
         dumpModelInfo(modelPath.modelFile.c_str());
@@ -674,6 +681,7 @@ bool Cli::convertModel(modelConfig& modelPath) {
             parseRes = addBizCode(modelPath.modelFile, modelPath.bizCode, netT);
         }
     } else if (modelPath.model == modelConfig::ONNX) {
+        // 真正进入 ONNX 转换的入口，onnx2MNNNet() 负责 ONNX 前端转换
         parseRes = onnx2MNNNet(modelPath.modelFile, modelPath.bizCode, netT, metaOp.get(), inputNames);
     } else if (modelPath.model == modelConfig::JSON) {
         if (json2mnn(modelPath.modelFile.c_str(), modelPath.MNNModel.c_str())) {
@@ -722,11 +730,13 @@ bool Cli::convertModel(modelConfig& modelPath) {
     CommonKit::loadCompress(modelPath);
     if (needOptimize) {
         std::cout << "Start to Optimize the MNN Net..." << std::endl;
+        // optimizeNet() 负责图优化，输入输出都是 MNN::NetT
         std::unique_ptr<MNN::NetT> newNet = optimizeNet(netT, modelPath.forTraining, modelPath, expectedPass);
         if (newNet->extraTensorDescribe.size()>0 && expectedPass.empty()) {
             MNN_PRINT("MNN net has tensor quant info\n");
             computeUnaryBuffer(newNet.get());
         }
+        // writeFb() 负责写出 .mnn 文件
         _reorderInputs(inputNames, newNet.get());
         error = writeFb(newNet, modelPath, std::move(metaOp));
     } else {

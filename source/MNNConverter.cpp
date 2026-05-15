@@ -6,6 +6,7 @@
 //  Copyright © 2018, Alibaba Group Holding Limited
 //
 
+// MNNConverter.cpp : Defines the entry point for the console application.
 #include "cli.hpp"
 
 int main(int argc, char *argv[]) {

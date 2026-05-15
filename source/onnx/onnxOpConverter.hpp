@@ -42,20 +42,25 @@ private:
     void onnxInit();
 };
 
+// onnxOpConverter 是所有算子转换器的基类，定义纯虚函数 -> 所有子类算子都要实现接口
 class onnxOpConverter {
 public:
     onnxOpConverter() {
     }
     virtual ~onnxOpConverter() {
     }
+    // 真正解析 ONNX 节点，把参数填到 MNN::OpT 里
     virtual void run(MNN::OpT* dstOp, const onnx::NodeProto* onnxNode, OnnxScope* scope) = 0;
-    virtual MNN::OpParameter type()                                      = 0;
-    virtual MNN::OpType opType()                                         = 0;
+    // 返回这个算子的参数类型，也就是 MNN::OpParameter
+    virtual MNN::OpParameter type() = 0;
+    // 返回这个算子对应的 MNN::OpType
+    virtual MNN::OpType opType() = 0;
     static MNN::DataType convertDataType(int32_t type);
     static MNN::BlobT* convertTensorToBlob(const onnx::TensorProto* tensor, const std::string& modelDir, MNN::OpT* op);
     // static std::unique_ptr<MNN::SubGraphProtoT> buildSubGraph(const onnx::GraphProto* graph, std::string& name);
 };
 
+// onnxOpConverterSuit 是转换器注册表
 class onnxOpConverterSuit {
 public:
     onnxOpConverterSuit();
@@ -67,6 +72,7 @@ public:
 
 private:
     static onnxOpConverterSuit* global;
+    // mConverterContainer 是一个 map，key 是 ONNX 的 op_type，value 是对应的 onnxOpConverter*，也就是这个算子的转换器
     std::map<std::string, onnxOpConverter*> mConverterContainer;
 };
 

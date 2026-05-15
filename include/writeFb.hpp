@@ -6,6 +6,7 @@
 //  Copyright © 2018, Alibaba Group Holding Limited
 //
 
+// 声明 MNN 内部结构写成 .mnn 文件的接口
 #ifndef WRITEFB_HPP
 #define WRITEFB_HPP
 
