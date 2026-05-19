@@ -1,0 +1,2 @@
+/home/wsy/onnx2mnn_converter/build/CMakeFiles/edit_cache.dir
+/home/wsy/onnx2mnn_converter/build/CMakeFiles/rebuild_cache.dir

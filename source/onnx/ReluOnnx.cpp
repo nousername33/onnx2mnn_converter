@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include "onnxOpConverter.hpp"
 
+// DECLARE_OP_CONVERTER 宏，声明 ReluOnnx 转换器类，继承自 onnxOpConverter
 DECLARE_OP_CONVERTER(ReluOnnx);
 
 MNN::OpType ReluOnnx::opType() {
@@ -47,3 +48,21 @@ void ReluOnnx::run(MNN::OpT* dstOp, const onnx::NodeProto* onnxNode,
 
 REGISTER_CONVERTER(ReluOnnx, Relu);
 REGISTER_CONVERTER(ReluOnnx, LeakyRelu);
+
+// onnxNode.op_type() = "Relu" 能找到 ReluOnnx 转换器的工作流：
+
+// 程序启动
+//   ↓
+// ReluOnnx.cpp 里的 static _Convert_Relu 对象构造
+//   ↓
+// new ReluOnnx
+//   ↓
+// insert("Relu", ReluOnnx*)
+//   ↓
+// 后面转换时 onnxNode.op_type() == "Relu"
+//   ↓
+// search("Relu")
+//   ↓
+// 返回 ReluOnnx*
+//   ↓
+// 调用 ReluOnnx::run()

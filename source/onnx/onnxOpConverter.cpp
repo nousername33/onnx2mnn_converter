@@ -155,6 +155,7 @@ onnxOpConverterSuit::~onnxOpConverterSuit() {
 
 onnxOpConverterSuit* onnxOpConverterSuit::global = nullptr;
 
+// 获取全局唯一注册表 -> 通过 onnxOpConverterSuit::get() 获取全局唯一实例，调用 insert() 注册转换器，调用 search() 查找转换器
 onnxOpConverterSuit* onnxOpConverterSuit::get() {
     if (global == nullptr) {
         global = new onnxOpConverterSuit;
@@ -162,11 +163,13 @@ onnxOpConverterSuit* onnxOpConverterSuit::get() {
     return global;
 }
 
+// 注册转换器，把某个 ONNX op_type 字符串和对应转换器对象绑定起来
 void onnxOpConverterSuit::insert(onnxOpConverter* t, const char* name) {
     MNN::OpCount::get()->insertOp("ONNX", std::string(name));
     mConverterContainer.insert(std::make_pair(name, t));
 }
 
+// 根据 op_type 查找转换器，如果没有找到，返回默认转换器 DefaultonnxOpConverter
 onnxOpConverter* onnxOpConverterSuit::search(const std::string& name) {
     auto iter = mConverterContainer.find(name);
     if (iter == mConverterContainer.end()) {

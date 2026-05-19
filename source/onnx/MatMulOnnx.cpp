@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include "onnxOpConverter.hpp"
 
-DECLARE_OP_CONVERTER(GemmOnnx);
+DECLARE_OP_CONVERTER(GemmOnnx); // 声明 GemmOnnx 转换器类，继承自 onnxOpConverter
 
 MNN::OpType GemmOnnx::opType() {
     return MNN::OpType_InnerProduct;
@@ -139,6 +139,8 @@ void GemmOnnx::run(MNN::OpT* dstOp, const onnx::NodeProto* onnxNode, OnnxScope* 
     dstOp->main.value = gemmParam;
 }
 
+// 为什么要注释掉注册 GemmOnnx 转换器？ GemmOnnx 的实现只覆盖有限场景，因此没有默认注册。
+// 如果 ONNX 模型里有 Gemm 算子，会找不到对应的转换器，最终调用默认转换器 DefaultonnxOpConverter，"TODO! This op is not supported now!"，提示算子暂不支持。
 //REGISTER_CONVERTER(GemmOnnx, Gemm);
 
 

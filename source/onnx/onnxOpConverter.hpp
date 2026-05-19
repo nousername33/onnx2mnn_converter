@@ -6,6 +6,11 @@
 //  Copyright © 2018, Alibaba Group Holding Limited
 //
 
+// 对于一个 ONNX 节点，converter 首先根据 op_type 找到对应的 xxxOnnx 类。
+// 这个类的 opType() 决定最终 MNN 算子的类型，type() 决定 main.value 的参数结构。
+// 真正的转换逻辑在 run() 中完成：run() 会读取 onnxNode 的 input、attribute，以及 scope 中保存的 initializer/constant 信息，把这些内容填入 MNN 的参数结构，比如 ReluT、Convolution2DT、ReshapeT、MatMulT 等。
+// 最后这个 MNNOp 被放入 netT->oplists，成为 MNN 图中的一个节点。
+
 #ifndef ONNXOPCONVERTER_HPP
 #define ONNXOPCONVERTER_HPP
 
@@ -91,6 +96,8 @@ private:
     onnxOpConverterRegister();
 };
 
+// 宏 快速声明一个 converter 类，每个算子文件里通常不用手写完整 class 声明，
+// 只要写：DECLARE_OP_CONVERTER(XXXOnnx); 然后在下面实现 run()、opType() 和 type()
 #define DECLARE_OP_CONVERTER(name)                                            \
     class name : public onnxOpConverter {                                     \
     public:                                                                   \
@@ -103,6 +110,11 @@ private:
         virtual MNN::OpType opType();                                         \
         virtual MNN::OpParameter type();                                      \
     }
+
+// 宏：把转换器注册到全局 map
 #define REGISTER_CONVERTER(name, opType) static onnxOpConverterRegister<name> _Convert_##opType(#opType)
+// 静态注册机制逻辑：
+// 每个转换器 cpp 文件里会有 REGISTER_CONVERTER(XXXOnnx, XXX)，这个宏会实例化一个 onnxOpConverterRegister<XXXOnnx> 对象，
+// onnxOpConverterRegister 的构造函数会创建一个 T 类型的 converter，然后调用 onnxOpConverterSuit::get() 获取注册表，并调用 insert(opConverter, name) 完成注册
 
 #endif // ONNXOPCONVERTER_HPP
